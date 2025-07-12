@@ -1,0 +1,28 @@
+{
+  "name": "weather-alert",
+  "description": "",
+  "version": "1.0.0",
+  "author": "Kenneth Isom",
+  "license": "ISC",
+  "main": "src/main.js",
+  "type": "module",
+  "jest": {
+    "transform": {}
+  },
+  "scripts": {
+    "build": "npm run clean & webpack --mode=production",
+    "build:dev": "npm run clean & webpack --mode=development",
+    "clean": "rm -rf dist",
+    "deploy:plan": "terraform -chdir=terraform plan -out=tfplan",
+    "deploy:apply": "terraform -chdir=terraform apply tfplan",
+    "deploy:destroy": "terraform -chdir=terraform destroy",
+    "deploy": "npm run deploy:plan && npm run deploy:apply",
+    "test": "node --experimental-vm-modules node_modules/.bin/jest"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-ses": "^3.840.0",
+    "jest": "^30.0.4",
+    "webpack": "^5.99.9",
+    "webpack-cli": "^5.1.4"
+  }
+}
