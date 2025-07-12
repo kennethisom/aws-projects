@@ -32,8 +32,56 @@ resource "aws_s3_object" "lambda_weather_alert" {
   etag = filemd5(data.archive_file.lambda_weather_alert.output_path)
 }
 
+resource "aws_cloudwatch_event_rule" "every_day_at_1800" {
+  name = "EveryDayAt1800"
+  description = "Every day at 18:00 UTC"
+  schedule_expression = "cron(0 18 * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "every_day_at_1800" {
+  rule = aws_cloudwatch_event_rule.every_day_at_1800.name
+  target_id = "weather_alert_every_day_at_1800_target"
+  arn = aws_lambda_function.weather_alert.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_to_call_weather_alert_lambda_1800" {
+  statement_id = "AllowExecutionFromCloudWatch1800"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.weather_alert.function_name
+  principal = "events.amazonaws.com"
+  source_arn = aws_cloudwatch_event_rule.every_day_at_1800.arn
+}
+
+resource "aws_cloudwatch_event_rule" "every_day_at_2200" {
+  name = "EveryDayAt2200"
+  description = "Every day at 22:00 UTC"
+  schedule_expression = "cron(0 22 * * ? *)"
+}
+
+resource "aws_cloudwatch_event_target" "every_day_at_2200" {
+  rule = aws_cloudwatch_event_rule.every_day_at_2200.name
+  target_id = "weather_alert_every_day_at_2200_target"
+  arn = aws_lambda_function.weather_alert.arn
+}
+
+resource "aws_lambda_permission" "allow_cloudwatch_to_call_weather_alert_lambda_2200" {
+  statement_id = "AllowExecutionFromCloudWatch2200"
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.weather_alert.function_name
+  principal = "events.amazonaws.com"
+  source_arn = aws_cloudwatch_event_rule.every_day_at_2200.arn
+}
+
+resource "aws_ses_email_identity" "target_email" {
+  email = "kennethisom@gmail.com"
+}
+
+resource "aws_ses_email_identity" "source_email" {
+  email = "dustycursor@gmail.com"
+}
+
 resource "aws_lambda_function" "weather_alert" {
-  function_name = "weatherAlert2"
+  function_name = "weatherAlert"
 
   s3_bucket = aws_s3_bucket.lambda_bucket.id
   s3_key    = aws_s3_object.lambda_weather_alert.key
@@ -43,8 +91,7 @@ resource "aws_lambda_function" "weather_alert" {
 
   source_code_hash = data.archive_file.lambda_weather_alert.output_base64sha256
 
-  role = "arn:aws:iam::648899017763:role/service-role/weatherAlert-role-ai4pddjv"
-  # role = aws_iam_role.lambda_exec.arn
+  role = aws_iam_role.weather_alert_execute.arn
 }
 
 resource "aws_cloudwatch_log_group" "weather_alert" {
@@ -53,24 +100,24 @@ resource "aws_cloudwatch_log_group" "weather_alert" {
   retention_in_days = 7
 }
 
-# resource "aws_iam_role" "lambda_exec" {
-#   name = "weatherAlert-role-ai4pddjv"
+resource "aws_iam_role" "weather_alert_execute" {
+  name = "weatherAlert-exec-role"
 
-#   assume_role_policy = jsonencode({
-#     Version = "2012-10-17"
-#     Statement = [{
-#       Action = "sts:AssumeRole"
-#       Effect = "Allow"
-#       Sid    = ""
-#       Principal = {
-#         Service = "lambda.amazonaws.com"
-#       }
-#       }
-#     ]
-#   })
-# }
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Sid    = ""
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+      }
+    ]
+  })
+}
 
-# resource "aws_iam_role_policy_attachment" "lambda_policy" {
-#   role       = aws_iam_role.lambda_exec.name
-#   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-# }
+resource "aws_iam_role_policy_attachment" "weather_alert_policy" {
+  role       = aws_iam_role.weather_alert_execute.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
